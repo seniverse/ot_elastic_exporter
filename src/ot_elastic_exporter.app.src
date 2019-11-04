@@ -1,0 +1,10 @@
+{application, ot_elastic_exporter,
+ [{description, "OpenTelemetry exporter for Elastic APM"},
+  {vsn, "git"},
+  {registered, []},
+  {applications, [jsone, hackney]},
+  {env,[]},
+  {modules, []},
+  {licenses, ["Apache 2.0"]},
+  {links, [{"Github", "https://github.com/seniverse/ot_elastic_reporter"}]}
+ ]}.
