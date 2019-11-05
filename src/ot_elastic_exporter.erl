@@ -75,14 +75,21 @@ export(SpansTid, #{metadata := Metadata} = Opts) ->
         [] ->
             ok;
         _ ->
-            {ok, 202, _, _} =
-                hackney:request(
-                  post,
-                  [ServerURL, <<"/intake/v2/events">>],
-                  [{<<"Content-Type">>, <<"application/x-ndjson">>}],
-                  [Metadata|Output],
-                  []),
-            ok
+            send_spans(ServerURL, [Metadata|Output])
+    end.
+
+send_spans(ServerURL, Spans) ->
+    case hackney:request(
+           post,
+           [ServerURL, <<"/intake/v2/events">>],
+           [{<<"Content-Type">>, <<"application/x-ndjson">>}],
+           Spans,
+           [])
+    of
+        {ok, 202, _, _} ->
+            ok;
+        {error, timeout} ->
+            send_spans(ServerURL, Spans)
     end.
 
 format_span(
