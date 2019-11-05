@@ -65,18 +65,41 @@ init(Opts) ->
 
 export(SpansTid, #{metadata := Metadata} = Opts) ->
     ServerURL = maps:get(server_url, Opts, <<"http://apm-server:8200">>),
+    RequestSize = maps:get(api_request_size, Opts, 724*1024),
     Output =
         ets:foldr(
           fun(Span, Acc) ->
-                  [jsone:encode(format_span(Span)), "\n"|Acc]
+                  [[jsone:encode(format_span(Span)), "\n"]|Acc]
           end, [], SpansTid),
 
     case Output of
         [] ->
             ok;
         _ ->
-            send_spans(ServerURL, [Metadata|Output])
+            SpansList = split_spans(RequestSize - iolist_size(Metadata), Output),
+            send_spans_list(ServerURL, Metadata, SpansList)
     end.
+
+split_spans(_, []) ->
+    [];
+split_spans(Limit, Spans) ->
+    {H, T} = take_spans(Limit, Spans),
+    [H|split_spans(Limit, T)].
+
+take_spans(Size, []) when Size > 0 ->
+    {[], []};
+take_spans(Size, [H|T]) when Size > 0 ->
+    {T1, Rest} = take_spans(Size - iolist_size(H), T),
+    {[H|T1], Rest};
+take_spans(_, Spans) ->
+    {[], Spans}.
+
+
+send_spans_list(_, _, []) ->
+    ok;
+send_spans_list(ServerURL, Metadata, [H|T]) ->
+    send_spans(ServerURL, [Metadata|H]),
+    send_spans_list(ServerURL, Metadata, T).
 
 send_spans(ServerURL, Spans) ->
     case hackney:request(
@@ -89,7 +112,8 @@ send_spans(ServerURL, Spans) ->
         {ok, 202, _, _} ->
             ok;
         {error, timeout} ->
-            send_spans(ServerURL, Spans)
+            logger:error("APM Server timeout"),
+            ok
     end.
 
 format_span(
