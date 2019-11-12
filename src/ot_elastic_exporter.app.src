@@ -2,7 +2,7 @@
  [{description, "OpenTelemetry exporter for Elastic APM"},
   {vsn, "git"},
   {registered, []},
-  {applications, [jsone, hackney]},
+  {applications, [sasl, jsone, hackney]},
   {env,[]},
   {modules, []},
   {licenses, ["Apache 2.0"]},
