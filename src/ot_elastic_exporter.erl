@@ -1,7 +1,7 @@
 -module(ot_elastic_exporter).
 
 -export([init/1, export/2]).
--include_lib("opentelemetry/include/opentelemetry.hrl").
+-include_lib("opentelemetry_api/include/opentelemetry.hrl").
 
 init(Opts) ->
     Kubernetes =
