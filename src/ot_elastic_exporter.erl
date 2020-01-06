@@ -49,9 +49,10 @@ init(Opts) ->
                },
 
     [{Name, Vsn, _, _}] = release_handler:which_releases(permanent),
+    Name2 = binary:replace(list_to_binary(Name), <<"/">>, <<"_">>),
 
     Service = #{
-                <<"name">> => list_to_binary(Name),
+                <<"name">> => Name2,
                 <<"version">> => list_to_binary(Vsn),
                 <<"agent">> => Agent,
                 <<"language">> => Language,
@@ -61,7 +62,8 @@ init(Opts) ->
                  <<"system">> => System,
                  <<"service">> => Service
                 },
-    {ok, Opts#{metadata => [jsone:encode(#{<<"metadata">> => Metadata}), "\n"]}}.
+    M = jsone:encode(#{<<"metadata">> => Metadata}),
+    {ok, Opts#{metadata => <<M/binary, "\n">>}}.
 
 export(SpansTid, #{metadata := Metadata} = Opts) ->
     ServerURL = maps:get(server_url, Opts, <<"http://apm-server:8200">>),
@@ -69,14 +71,15 @@ export(SpansTid, #{metadata := Metadata} = Opts) ->
     Output =
         ets:foldr(
           fun(Span, Acc) ->
-                  [[jsone:encode(format_span(Span)), "\n"]|Acc]
+            Encoded = jsone:encode(format_span(Span)),
+            [<<Encoded/binary, "\n">> | Acc]
           end, [], SpansTid),
 
     case Output of
         [] ->
             ok;
         _ ->
-            SpansList = split_spans(RequestSize - iolist_size(Metadata), Output),
+            SpansList = split_spans(RequestSize - byte_size(Metadata), Output),
             send_spans_list(ServerURL, Metadata, SpansList)
     end.
 
@@ -89,7 +92,7 @@ split_spans(Limit, Spans) ->
 take_spans(Size, []) when Size > 0 ->
     {[], []};
 take_spans(Size, [H|T]) when Size > 0 ->
-    {T1, Rest} = take_spans(Size - iolist_size(H), T),
+    {T1, Rest} = take_spans(Size - byte_size(H), T),
     {[H|T1], Rest};
 take_spans(_, Spans) ->
     {[], Spans}.
@@ -102,14 +105,18 @@ send_spans_list(ServerURL, Metadata, [H|T]) ->
     send_spans_list(ServerURL, Metadata, T).
 
 send_spans(ServerURL, Spans) ->
+    Body = lists:foldr(fun(X, Acc) -> <<X/binary, Acc/binary>> end, <<"">>, Spans),
     case hackney:request(
            post,
            [ServerURL, <<"/intake/v2/events">>],
            [{<<"Content-Type">>, <<"application/x-ndjson">>}],
-           Spans,
+           Body,
            [])
     of
         {ok, 202, _, _} ->
+            ok;
+        {ok, Code, _, BodyRef} ->
+            logger:error("request apm error, code: ~p, body: ~p", [Code, hackney:body(BodyRef)]),
             ok;
         {error, timeout} ->
             logger:error("APM Server timeout"),
