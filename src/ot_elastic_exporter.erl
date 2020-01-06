@@ -22,7 +22,7 @@ init(Opts) ->
 
     {ok, Hostname} = inet:gethostname(),
 
-    [Architecture, _, Platform, _] = string:split(erlang:system_info(system_architecture), "-", all),
+    [Architecture, _, Platform | _] = string:split(erlang:system_info(system_architecture), "-", all),
 
     System = #{
                <<"architecture">> => list_to_binary(Architecture),
@@ -61,7 +61,7 @@ init(Opts) ->
                  <<"system">> => System,
                  <<"service">> => Service
                 },
-    Opts#{metadata => [jsone:encode(#{<<"metadata">> => Metadata}), "\n"]}.
+    {ok, Opts#{metadata => [jsone:encode(#{<<"metadata">> => Metadata}), "\n"]}}.
 
 export(SpansTid, #{metadata := Metadata} = Opts) ->
     ServerURL = maps:get(server_url, Opts, <<"http://apm-server:8200">>),
