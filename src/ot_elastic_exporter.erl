@@ -22,7 +22,7 @@ init(Opts) ->
 
     {ok, Hostname} = inet:gethostname(),
 
-    [Architecture, _, Platform | _] = string:split(erlang:system_info(system_architecture), "-", all),
+    [Architecture, _, Platfor$m | _] = string:split(erlang:system_info(system_architecture), "-", all),
 
     System = #{
                <<"architecture">> => list_to_binary(Architecture),
@@ -49,6 +49,7 @@ init(Opts) ->
                },
 
     [{Name, Vsn, _, _}] = release_handler:which_releases(permanent),
+    % service name should be match [a-zA-Z _-]*
     Name2 = binary:replace(list_to_binary(Name), <<"/">>, <<"_">>),
 
     Service = #{
