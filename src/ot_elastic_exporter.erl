@@ -22,7 +22,7 @@ init(Opts) ->
 
     {ok, Hostname} = inet:gethostname(),
 
-    [Architecture, _, Platfor$m | _] = string:split(erlang:system_info(system_architecture), "-", all),
+    [Architecture, _, Platform | _] = string:split(erlang:system_info(system_architecture), "-", all),
 
     System = #{
                <<"architecture">> => list_to_binary(Architecture),
